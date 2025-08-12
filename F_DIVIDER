@@ -1,0 +1,49 @@
+//
+// divider1: a simple frequency divider
+// divider2: a frequency divider that exhibits gaussian synchronous jitter
+//
+// Version 1d, 16 June 2024
+//
+// Ken Kundert, Hua Li
+//
+// Downloaded from The Designer's Guide (www.designers-guide.org).
+// Post any questions to www.designers-guide.org/Forum
+
+`include "disciplines.vams"
+
+//
+// This model exhibits no jitter
+//
+
+module divider1 (out, in);
+
+output out; voltage out;                // output
+input in; voltage in;                   // input (edge triggered)
+parameter real vh=1.2;                   // output voltage in high state
+parameter real vl=0;                   // output voltage in low state
+parameter real vth=(vh+vl)/2;           // threshold voltage at input
+parameter integer ratio=5100 from [1:inf); // divide ratio
+parameter integer dir=1 from [-1:1] exclude 0;
+                                        // dir=1 for positive edge trigger
+                                        // dir=-1 for negative edge trigger
+parameter real tt=1n from (0:inf);      // transition time of output signal
+parameter real td=0 from [0:inf);       // average delay from input to output
+integer count, n;
+
+analog 
+begin
+    @(cross(V(in) - vth, dir)) 
+	begin
+        if (count == floor(ratio/2))
+            n = vh;
+		
+		if (count == ratio)
+		begin
+			n = vl;
+			count = 0;
+		end
+        count = count + 1;
+    end
+    V(out) <+ transition(n ? vh : vl, 0, 100f, 100f);
+end
+endmodule

@@ -1,0 +1,50 @@
+`include "disciplines.vams"
+`include "constants.vams"
+
+// Voltage controlled oscillator
+// Output is a clean square wave with no jitter
+
+module vco0 (out, in);
+
+input in; voltage in;                           // input terminal
+output out; voltage out;                        // output terminal
+
+parameter real vmin = 0;                         // input voltage for min frequency
+parameter real vmax = vmin + 3 from (vmin:inf);  // input voltage for max frequency
+parameter real Fmin = 0.5M from (0:inf);        // minimum output frequency in Hz
+parameter real Fmax = 3G from (Fmin:inf);        // maximum output frequency in Hz
+parameter real vh   = 1.2;                       // high output level
+parameter real vl   = 0;                         // low output level
+parameter real tt   = 0 from [0:inf);            // transition time of output signal
+parameter real ttol = 1u/Fmax from (0:0.1/Fmax); // time tolerance
+
+real freq, phase, sine_wave;
+integer state_out;
+
+analog begin
+    // Compute frequency from control voltage
+    freq = (V(in) - vmin) * (Fmax - Fmin) / (vmax - vmin) + Fmin;
+
+    // Bound the frequency to valid range
+    if (freq > Fmax) freq = Fmax;
+    if (freq < Fmin) freq = Fmin;
+
+    // Bound the timestep so no edges are skipped
+    $bound_step(0.01 / freq);
+
+    // Integrate frequency to get phase in cycles (01), wrap around at 0.5
+    phase = 2*3.14159*idtmod(freq, 0.0, 1.0, -0.5);
+	
+	sine_wave = sin(phase);
+
+    
+   @(cross(sine_wave, 0));
+	if (sine_wave > 0)
+		state_out = vh;
+	else
+		state_out = vl;
+		
+    V(out) <+ transition(state_out,0,100f,100f); 
+end
+
+endmodule

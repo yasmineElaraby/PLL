@@ -1,0 +1,51 @@
+`include "constants.vams"
+`include "disciplines.vams"
+
+module PFD(Fref, Fout, QA, QB);
+	input Fref, Fout; 
+	output QA, QB;
+	electrical Fref,Fout, QA, QB;
+	parameter real vh = 1.2;
+	parameter real vl = 0;
+	parameter real vth = (vh + vl)/2;
+	parameter integer dir=1 from [-1:1] exclude 0;
+	parameter real tt = 0 from [0:inf);		// transition time of output signal
+	parameter real td = 0  from [0:inf);
+	integer state_A;
+	integer state_B;
+	
+	analog 
+	begin
+		@(initial_step) 
+		begin
+			state_A = 0;
+			state_B = 0;
+		end
+		
+		@(cross(V(Fref)-vth, dir))
+		begin
+			if (state_B < vth)
+			begin
+				state_A = 1;
+			end else begin
+				state_A = 0;
+				state_B = 0;
+			end
+		end
+		
+		@(cross(V(Fout)-vth, dir))
+		begin
+			if (state_A < vth)
+			begin
+				state_B = 1;
+			end else begin
+				state_A = 0;
+				state_B = 0;
+			end
+		end
+		
+		// drive output:
+		V(QA) <+ transition(state_A ? vh : vl, 0, 100f, 100f);
+		V(QB) <+ transition(state_B ? vh : vl, 0, 100f, 100f);
+	end
+endmodule
